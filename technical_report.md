@@ -124,3 +124,69 @@ The final project will demonstrate the following SQL techniques:
 2. **`vw_top_customers`** — Ranks customers by total spending using a CTE.
 3. **`vw_product_performance`** — Shows each product's total sales, average rating, and review count.
 
+### Planned Key Queries (5–7)
+
+1. Monthly revenue report (aggregation + group by)
+2. Top 10 customers by lifetime spending (CTE + join + aggregation)
+3. Best and worst reviewed products (join + aggregation + order by)
+4. Customers who have never left a review (subquery with NOT IN / NOT EXISTS)
+5. Revenue breakdown by product category (multi-table join + aggregation)
+6. Products with above-average revenue (subquery or CTE)
+7. Order details report joining customers, orders, items, products, and payments
+
+## 5. Sample Queries
+
+### Query 1 — Monthly Revenue Report (Aggregation + Join)
+
+```sql
+SELECT
+    DATE_FORMAT(o.order_date, '%Y-%m')  AS month,
+    COUNT(DISTINCT o.order_id)          AS total_orders,
+    SUM(o.total_amount)                 AS total_revenue
+FROM orders o
+WHERE o.status != 'cancelled'
+GROUP BY DATE_FORMAT(o.order_date, '%Y-%m')
+ORDER BY month DESC;
+```
+
+### Query 2 — Top 5 Customers by Lifetime Value (CTE + Join + Aggregation)
+
+```sql
+WITH customer_spending AS (
+    SELECT
+        o.customer_id,
+        SUM(o.total_amount)  AS lifetime_value,
+        COUNT(o.order_id)    AS order_count
+    FROM orders o
+    WHERE o.status != 'cancelled'
+    GROUP BY o.customer_id
+)
+SELECT
+    c.first_name,
+    c.last_name,
+    c.email,
+    cs.lifetime_value,
+    cs.order_count
+FROM customer_spending cs
+JOIN customers c ON cs.customer_id = c.customer_id
+ORDER BY cs.lifetime_value DESC
+LIMIT 5;
+```
+
+### Query 3 — Products with No Reviews (Subquery)
+
+```sql
+SELECT
+    p.product_id,
+    p.name,
+    p.price,
+    cat.name AS category
+FROM products p
+JOIN categories cat ON p.category_id = cat.category_id
+WHERE p.product_id NOT IN (
+    SELECT DISTINCT product_id
+    FROM reviews
+);
+```
+
+
