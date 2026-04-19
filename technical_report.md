@@ -1,4 +1,4 @@
-# Technical Report — E-Commerce Database Project
+# Technical Report — E-Commerce Database Project 
 
 **MTM4692 — SQL Project Milestone**
 
