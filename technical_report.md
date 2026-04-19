@@ -1,6 +1,6 @@
 # Technical Report — E-Commerce Database Project
 
-**MTM4692 — SQL Project Milestone**
+**MTM4692 — SQL Project**
 
 **Team Members:**
 - Erhan Türker
