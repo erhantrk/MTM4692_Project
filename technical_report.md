@@ -14,3 +14,113 @@ E-commerce is one of the fastest-growing sectors in the global economy. Even a s
 - **Product quality**: Aggregating review scores highlights products that need improvement or removal.
 
 **Feasibility**: The scope of this project — 7 tables, 5–7 key queries, and 3 views — is well-suited for a semester-long course project. The domain is familiar and well-defined, the relationships between entities are natural and unambiguous, and the data lends itself to a wide variety of SQL techniques (joins, aggregation, CTEs, subqueries, and views). This makes the project both manageable and rich enough to demonstrate meaningful database skills.
+
+## 3. Preliminary Schema
+
+### 3.1 `customers`
+
+Stores registered customer accounts.
+
+| Column      | Data Type     | Constraints                 |
+|-------------|---------------|-----------------------------|
+| customer_id | INTEGER       | PRIMARY KEY, AUTO_INCREMENT |
+| first_name  | TEXT          | NOT NULL                    |
+| last_name   | TEXT          | NOT NULL                    |
+| email       | TEXT          | NOT NULL, UNIQUE            |
+| phone       | TEXT          |                             |
+| address     | TEXT          |                             |
+| city        | TEXT          |                             |
+| state       | TEXT          |                             |
+| created_at  | DATETIME      | DEFAULT CURRENT_TIMESTAMP   |
+
+### 3.2 `categories`
+
+Groups products into browsable categories.
+
+| Column       | Data Type     | Constraints                 |
+|--------------|---------------|-----------------------------|
+| category_id  | INTEGER       | PRIMARY KEY, AUTO_INCREMENT |
+| name         | TEXT          | NOT NULL, UNIQUE            |
+| description  | TEXT          |                             |
+
+### 3.3 `products`
+
+The product catalog, linked to categories.
+
+| Column       | Data Type      | Constraints                           |
+|--------------|----------------|---------------------------------------|
+| product_id   | INTEGER        | PRIMARY KEY, AUTO_INCREMENT           |
+| category_id  | INTEGER        | FOREIGN KEY → categories(category_id) |
+| name         | TEXT           | NOT NULL                              |
+| description  | TEXT           |                                       |
+| price        | INTEGER        | NOT NULL, CHECK (price > 0)           |
+| stock_qty    | INTEGER        | NOT NULL, DEFAULT 0                   |
+| created_at   | DATETIME       | DEFAULT CURRENT_TIMESTAMP             |
+
+### 3.4 `orders`
+
+Records each purchase order placed by a customer.
+
+| Column       | Data Type     | Constraints                          |
+|--------------|---------------|--------------------------------------|
+| order_id     | INTEGER       | PRIMARY KEY, AUTO_INCREMENT          |
+| customer_id  | INTEGER       | FOREIGN KEY → customers(customer_id) |
+| order_date   | DATETIME      | DEFAULT CURRENT_TIMESTAMP            |
+| status       | TEXT          | NOT NULL, DEFAULT 'pending'          |
+| total_amount | REAL          | NOT NULL                             |
+
+### 3.5 `order_items`
+
+Line items within an order — the junction table between orders and products.
+
+| Column       | Data Type      | Constraints                        |
+|--------------|----------------|------------------------------------|
+| item_id      | INTEGER        | PRIMARY KEY, AUTO_INCREMENT        |
+| order_id     | INTEGER        | FOREIGN KEY → orders(order_id)     |
+| product_id   | INTEGER        | FOREIGN KEY → products(product_id) |
+| quantity     | INTEGER        | NOT NULL, CHECK (quantity > 0)     |
+| unit_price   | REAL           | NOT NULL                           |
+
+### 3.6 `payments`
+
+Payment records for each order.
+
+| Column        | Data Type      | Constraints                    |
+|---------------|----------------|--------------------------------|
+| payment_id    | INTEGER        | PRIMARY KEY, AUTO_INCREMENT    |
+| order_id      | INTEGER        | FOREIGN KEY → orders(order_id) |
+| payment_date  | DATETIME       | DEFAULT CURRENT_TIMESTAMP      |
+| amount        | REAL           | NOT NULL                       |
+| payment_method| TEXT           | NOT NULL                       |
+
+### 3.7 `reviews`
+
+Customer reviews for products they have purchased.
+
+| Column       | Data Type      | Constraints                              |
+|--------------|----------------|------------------------------------------|
+| review_id    | INTEGER        | PRIMARY KEY, AUTO_INCREMENT              |
+| customer_id  | INTEGER        | FOREIGN KEY → customers(customer_id)     |
+| product_id   | INTEGER        | FOREIGN KEY → products(product_id)       |
+| rating       | INTEGER        | NOT NULL, CHECK (rating BETWEEN 1 AND 5) |
+| comment      | TEXT           |                                          |
+| review_date  | DATETIME       | DEFAULT CURRENT_TIMESTAMP                |
+
+## 4. Proposed SQL Features
+
+The final project will demonstrate the following SQL techniques:
+
+| Feature         | Planned Usage                                                        |
+|-----------------|----------------------------------------------------------------------|
+| **Joins**       | Combine customers, orders, order_items, and products to build full order reports |
+| **Aggregation** | SUM, COUNT, AVG for revenue totals, order counts, average ratings    |
+| **Views**       | 3 views — monthly revenue summary, top customers, product performance |
+| **CTEs**        | Rank customers by lifetime value; identify products above average revenue |
+| **Subqueries**  | Find customers who have never left a review; products with no orders |
+
+### Planned Views (3)
+
+1. **`vw_monthly_revenue`** — Aggregates total revenue by month.
+2. **`vw_top_customers`** — Ranks customers by total spending using a CTE.
+3. **`vw_product_performance`** — Shows each product's total sales, average rating, and review count.
+
