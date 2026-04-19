@@ -1,3 +1,17 @@
+# Technical Report — E-Commerce Database Project
+
+**MTM4692 — SQL Project Milestone**
+
+**Team Members:**
+- Erhan Türker
+- Andaç Demirdelen
+- Hüseyin Ekşici
+- Ahmet Barkın Mecer
+
+**Repository:** [github.com/erhantrk/MTM4692_Project](https://github.com/erhantrk/MTM4692_Project)
+
+---
+
 # 1. Problem Statement
 
 Small and medium e-commerce businesses collect large amounts of transactional data — customer registrations, product listings, orders, payments, and reviews — but often lack a structured system to store, query, and analyze this information. Without a well-designed relational database, critical business questions go unanswered: Which products drive the most revenue? Which customers are the most valuable? Are certain product categories underperforming? What does monthly revenue growth look like?
