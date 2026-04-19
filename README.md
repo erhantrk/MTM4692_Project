@@ -1,5 +1,15 @@
 # MTM4692 E-Commerce Database Project
 
+**Team Members:**
+- Erhan Türker
+- Andaç Demirdelen
+- Hüseyin Ekşici
+- Ahmet Barkın Mecer
+
+**Repository:** [github.com/erhantrk/MTM4692_Project](https://github.com/erhantrk/MTM4692_Project)
+
+---
+
 
 ## Project Overview
 
