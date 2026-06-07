@@ -88,7 +88,108 @@ CREATE TABLE IF NOT EXISTS reviews(
 );
 
 -- ============================================================
--- 2. ÖRNEK VERİ (SAMPLE DATA)
+-- 2. SAMPLE DATA
 -- ============================================================
 
-
+-- Query 1: Monthly Sales Report 
+SELECT
+    strftime('%Y-%m', o.order_date)  AS month,
+    COUNT(DISTINCT o.order_id)       AS total_orders,
+    SUM(o.total_amount)              AS total_revenue
+FROM orders o
+WHERE o.status != 'cancelled'
+GROUP BY strftime('%Y-%m', o.order_date)
+ORDER BY month DESC;
+ 
+-- Query 2: Top 5 Customers by Lifetime Value 
+WITH customer_spending AS (
+    SELECT
+        o.customer_id,
+        SUM(o.total_amount)  AS lifetime_value,
+        COUNT(o.order_id)    AS order_count
+    FROM orders o
+    WHERE o.status != 'cancelled'
+    GROUP BY o.customer_id
+)
+SELECT
+    c.first_name,
+    c.last_name,
+    c.email,
+    cs.lifetime_value,
+    cs.order_count
+FROM customer_spending cs
+JOIN customers c ON cs.customer_id = c.customer_id
+ORDER BY cs.lifetime_value DESC
+LIMIT 5;
+ 
+-- Query 3: Products Without Reviews
+SELECT
+    p.product_id,
+    p.name,
+    p.price,
+    cat.name AS category
+FROM products p
+JOIN categories cat ON p.category_id = cat.category_id
+WHERE p.product_id NOT IN (
+    SELECT DISTINCT product_id FROM reviews
+);
+ 
+-- Query 4: Category Performance Report
+SELECT
+    cat.name                                        AS category,
+    COUNT(DISTINCT oi.order_id)                    AS total_orders,
+    SUM(oi.quantity * oi.unit_price)               AS category_revenue,
+    ROUND(AVG(oi.unit_price), 2)                   AS avg_item_price
+FROM order_items oi
+JOIN products p   ON oi.product_id = p.product_id
+JOIN categories cat ON p.category_id = cat.category_id
+JOIN orders o     ON oi.order_id = o.order_id
+WHERE o.status != 'cancelled'
+GROUP BY cat.category_id
+ORDER BY category_revenue DESC;
+ 
+-- Query 5: Customers Who Have Not Written Reviews
+SELECT
+    c.customer_id,
+    c.first_name || ' ' || c.last_name  AS full_name,
+    c.email
+FROM customers c
+WHERE c.customer_id NOT IN (
+    SELECT DISTINCT customer_id FROM reviews
+);
+ 
+-- Query 6: Above Average Revenue Products
+WITH product_revenue AS (
+    SELECT
+        p.product_id,
+        p.name,
+        SUM(oi.quantity * oi.unit_price) AS total_revenue
+    FROM products p
+    JOIN order_items oi ON p.product_id = oi.product_id
+    JOIN orders o       ON oi.order_id = o.order_id
+    WHERE o.status != 'cancelled'
+    GROUP BY p.product_id
+)
+SELECT *
+FROM product_revenue
+WHERE total_revenue > (SELECT AVG(total_revenue) FROM product_revenue)
+ORDER BY total_revenue DESC;
+ 
+-- Query 7: Exact Order Details 
+SELECT
+    o.order_id,
+    c.first_name || ' ' || c.last_name  AS customer_name,
+    o.order_date,
+    o.status,
+    p.name                              AS product_name,
+    oi.quantity,
+    oi.unit_price,
+    oi.quantity * oi.unit_price         AS line_total,
+    pay.payment_method,
+    pay.amount                          AS amount_paid
+FROM orders o
+JOIN customers   c   ON o.customer_id  = c.customer_id
+JOIN order_items oi  ON o.order_id     = oi.order_id
+JOIN products    p   ON oi.product_id  = p.product_id
+LEFT JOIN payments pay ON o.order_id   = pay.order_id
+ORDER BY o.order_date DESC, o.order_id, oi.item_id;
