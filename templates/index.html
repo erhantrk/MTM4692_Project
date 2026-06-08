@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MTM4692 — DB Explorer</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo">▣</span>
+    <h1>MTM4692 — E-Commerce DB Explorer</h1>
+  </div>
+  <div class="meta">
+    <span id="conn-status">sqlite:project.db</span>
+    <button id="reset-btn" class="danger" title="Drop and rebuild from .sql files">Reset DB</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="schema">Schema</button>
+  <button class="tab" data-tab="queries">Queries</button>
+  <button class="tab" data-tab="views">Views</button>
+  <button class="tab" data-tab="sql">SQL Console</button>
+</nav>
+
+<main>
+  <!-- Schema tab -->
+  <section id="tab-schema" class="tab-panel active">
+    <div id="schema-container" class="loading">Loading schema...</div>
+  </section>
+
+  <!-- Queries tab -->
+  <section id="tab-queries" class="tab-panel">
+    <aside class="sidebar">
+      <h3>Predefined Queries</h3>
+      <ul id="query-list"></ul>
+    </aside>
+    <div class="result-pane">
+      <p class="hint">Select a query on the left to run it.</p>
+    </div>
+  </section>
+
+  <!-- Views tab -->
+  <section id="tab-views" class="tab-panel">
+    <aside class="sidebar">
+      <h3>Views</h3>
+      <ul id="view-list"></ul>
+    </aside>
+    <div class="result-pane">
+      <p class="hint">Select a view on the left to inspect it.</p>
+    </div>
+  </section>
+
+  <!-- SQL Console tab -->
+  <section id="tab-sql" class="tab-panel">
+    <div class="console">
+      <label for="sql-input">Ad-hoc SQL (read-only — SELECT / WITH / PRAGMA only)</label>
+      <textarea id="sql-input" rows="6" spellcheck="false">SELECT name, stock_qty
+FROM products
+WHERE stock_qty &lt; 20
+ORDER BY stock_qty;</textarea>
+      <button id="sql-run">Run</button>
+      <div id="sql-result"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Erhan Türker · Andaç Demirdelen · Hüseyin Ekşici · Ahmet Barkın Mecer
+</footer>
+
+<script>
+// ---------- Tab switching ----------
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('active', p.id === 'tab-' + target);
+    });
+  });
+});
+
+// ---------- Result table renderer ----------
+function renderTable(payload, targetEl) {
+  if (payload.error) {
+    targetEl.innerHTML = `<div class="error">ERROR: ${escapeHtml(payload.error)}</div>` +
+      (payload.sql ? `<pre class="sql">${escapeHtml(payload.sql)}</pre>` : '');
+    return;
+  }
+  let html = '';
+  if (payload.title) html += `<h2 class="result-title">${escapeHtml(payload.title)}</h2>`;
+  if (payload.sql)   html += `<pre class="sql">${escapeHtml(payload.sql)}</pre>`;
+  html += `<div class="row-count">${payload.row_count} row${payload.row_count === 1 ? '' : 's'}</div>`;
+  if (payload.rows.length === 0) {
+    html += '<div class="empty">No rows.</div>';
+  } else {
+    html += '<div class="table-wrap"><table><thead><tr>';
+    payload.columns.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+    html += '</tr></thead><tbody>';
+    payload.rows.forEach(row => {
+      html += '<tr>';
+      row.forEach(cell => html += `<td>${cell === null ? '<i>NULL</i>' : escapeHtml(String(cell))}</td>`);
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  targetEl.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Schema tab ----------
+async function loadSchema() {
+  const container = document.getElementById('schema-container');
+  try {
+    const res = await fetch('/api/schema');
+    const data = await res.json();
+    let html = '<div class="schema-grid">';
+    data.tables.forEach(t => {
+      html += `<div class="table-card"><div class="table-header"><span class="table-name">${t.name}</span><span class="row-badge">${t.row_count} rows</span></div>`;
+      html += '<table class="col-table"><thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead><tbody>';
+      t.columns.forEach(c => {
+        const constraints = [];
+        if (c.pk) constraints.push('PK');
+        if (c.notnull) constraints.push('NOT NULL');
+        const fk = t.foreign_keys.find(f => f.column === c.name);
+        if (fk) constraints.push(`FK → ${fk.references}`);
+        html += `<tr><td>${c.name}</td><td>${c.type}</td><td>${constraints.join(', ')}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="error">Failed to load schema: ${e}</div>`;
+  }
+}
+
+// ---------- Queries tab ----------
+async function loadQueries() {
+  const ul = document.getElementById('query-list');
+  const res = await fetch('/api/queries');
+  const queries = await res.json();
+  ul.innerHTML = '';
+  queries.forEach(q => {
+    const li = document.createElement('li');
+    li.innerHTML = `<button class="q-btn" data-qid="${q.id}"><span class="q-num">Q${q.id}</span> ${escapeHtml(q.title)}</button>`;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('.q-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      ul.querySelectorAll('.q-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const pane = document.querySelector('#tab-queries .result-pane');
+      pane.innerHTML = '<div class="loading">Running...</div>';
+      const r = await fetch('/api/query/' + b.dataset.qid);
+      renderTable(await r.json(), pane);
+    });
+  });
+}
+
+// ---------- Views tab ----------
+async function loadViews() {
+  const ul = document.getElementById('view-list');
+  const res = await fetch('/api/views');
+  const views = await res.json();
+  ul.innerHTML = '';
+  views.forEach(v => {
+    const li = document.createElement('li');
+    li.innerHTML = `<button class="v-btn" data-name="${v}">${v}</button>`;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('.v-btn').forEach(b => {
+    b.addEventListener('click', async () => {
+      ul.querySelectorAll('.v-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const pane = document.querySelector('#tab-views .result-pane');
+      pane.innerHTML = '<div class="loading">Running...</div>';
+      const r = await fetch('/api/view/' + b.dataset.name);
+      renderTable(await r.json(), pane);
+    });
+  });
+}
+
+// ---------- SQL Console ----------
+document.getElementById('sql-run').addEventListener('click', async () => {
+  const sql = document.getElementById('sql-input').value;
+  const out = document.getElementById('sql-result');
+  out.innerHTML = '<div class="loading">Running...</div>';
+  const r = await fetch('/api/exec', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({sql}),
+  });
+  renderTable(await r.json(), out);
+});
+
+// ---------- Reset ----------
+document.getElementById('reset-btn').addEventListener('click', async () => {
+  if (!confirm('Drop and rebuild the database from queries.sql + seed.sql + views.sql?')) return;
+  const r = await fetch('/api/reset', {method: 'POST'});
+  const data = await r.json();
+  alert(data.message || 'Reset complete');
+  loadSchema(); loadQueries(); loadViews();
+});
+
+// ---------- Boot ----------
+loadSchema();
+loadQueries();
+loadViews();
+</script>
+</body>
+</html>

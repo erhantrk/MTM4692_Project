@@ -138,8 +138,8 @@ WHERE p.product_id NOT IN (
 SELECT
     cat.name                                        AS category,
     COUNT(DISTINCT oi.order_id)                    AS total_orders,
-    SUM(oi.quantity * oi.unit_price)               AS category_revenue,
-    ROUND(AVG(oi.unit_price), 2)                   AS avg_item_price
+    SUM(oi.quantity * oi.price)                    AS category_revenue,
+    ROUND(AVG(oi.price), 2)                        AS avg_item_price
 FROM order_items oi
 JOIN products p   ON oi.product_id = p.product_id
 JOIN categories cat ON p.category_id = cat.category_id
@@ -163,7 +163,7 @@ WITH product_revenue AS (
     SELECT
         p.product_id,
         p.name,
-        SUM(oi.quantity * oi.unit_price) AS total_revenue
+        SUM(oi.quantity * oi.price) AS total_revenue
     FROM products p
     JOIN order_items oi ON p.product_id = oi.product_id
     JOIN orders o       ON oi.order_id = o.order_id
@@ -183,8 +183,8 @@ SELECT
     o.status,
     p.name                              AS product_name,
     oi.quantity,
-    oi.unit_price,
-    oi.quantity * oi.unit_price         AS line_total,
+    oi.price                            AS unit_price,
+    oi.quantity * oi.price              AS line_total,
     pay.payment_method,
     pay.amount                          AS amount_paid
 FROM orders o
@@ -192,4 +192,4 @@ JOIN customers   c   ON o.customer_id  = c.customer_id
 JOIN order_items oi  ON o.order_id     = oi.order_id
 JOIN products    p   ON oi.product_id  = p.product_id
 LEFT JOIN payments pay ON o.order_id   = pay.order_id
-ORDER BY o.order_date DESC, o.order_id, oi.item_id;
+ORDER BY o.order_date DESC, o.order_id, oi.order_item_id;
